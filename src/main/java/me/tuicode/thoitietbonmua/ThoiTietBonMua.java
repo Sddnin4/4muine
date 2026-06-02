@@ -2,6 +2,7 @@ package me.tuicode.thoitietbonmua;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -16,27 +17,26 @@ public final class ThoiTietBonMua extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        getLogger().info("Plugin Thoi Tiet Bon Mua + Scoreboard cho 1.21 da san sang!");
+        getLogger().info("Plugin Thoi Tiet 4 Mua + Scoreboard Fix 1.21 dang hoat dong!");
         
-        // Đăng ký bộ lắng nghe sự kiện trồng trọt mùa xuân
+        // Đăng ký trực tiếp Listener ngay trong nội bộ để tránh lỗi ép package trên GitHub
         getServer().getPluginManager().registerEvents(new TrongTrotListener(), this);
         
-        // Tạo Task chạy ngầm lặp lại mỗi 1 giây (20 ticks) để cập nhật bảng liên tục
         new BukkitRunnable() {
             @Override
             public void run() {
-                chayHeThongChinh();
+                chayHeThongCore();
             }
         }.runTaskTimer(this, 0L, 20L);
     }
 
-    private void chayHeThongChinh() {
-        int onlineCount = Bukkit.getOnlinePlayers().size();
+    private void chayHeThongCore() {
+        int soNguoiOnline = Bukkit.getOnlinePlayers().size();
+        LegacyComponentSerializer serializer = LegacyComponentSerializer.legacySection();
         
         for (Player player : Bukkit.getOnlinePlayers()) {
             World world = player.getWorld();
             
-            // TÍNH TOÁN NGÀY VÀ MÙA TRONG GAME
             long totalTicks = world.getFullTime();
             long tongSoNgay = totalTicks / 24000; 
             long ngayTrongNam = tongSoNgay % 360; 
@@ -45,11 +45,9 @@ public final class ThoiTietBonMua extends JavaPlugin {
             String muaHienTai = "";
             NamedTextColor mauMua = NamedTextColor.WHITE;
 
-            // XỬ LÝ HIỆU ỨNG & MÔI TRƯỜNG THEO TỪNG MÙA
             if (ngayTrongNam < 90) {
                 muaHienTai = "Xuân";
-                mauMua = NamedTextColor.LIGHT_PURPLE; // Màu hồng hoa đào
-                
+                mauMua = NamedTextColor.LIGHT_PURPLE;
                 if (ngayTrongMua == 1 && !world.hasStorm()) {
                     world.setStorm(true);
                     world.setWeatherDuration(12000); 
@@ -58,9 +56,7 @@ public final class ThoiTietBonMua extends JavaPlugin {
                 
             } else if (ngayTrongNam < 180) {
                 muaHienTai = "Hạ";
-                mauMua = NamedTextColor.GOLD; // Màu cam nắng gắt
-                
-                // ÉP TẮT MƯA TUYỆT ĐỐI TRONG MÙA HẠ
+                mauMua = NamedTextColor.GOLD;
                 if (world.hasStorm()) {
                     world.setStorm(false);
                     world.setThundering(false);
@@ -71,52 +67,46 @@ public final class ThoiTietBonMua extends JavaPlugin {
                 
             } else if (ngayTrongNam < 270) {
                 muaHienTai = "Thu";
-                mauMua = NamedTextColor.YELLOW; // Màu vàng lá úa
+                mauMua = NamedTextColor.YELLOW;
                 player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0, false, false, false));
                 
             } else {
                 muaHienTai = "Đông";
-                mauMua = NamedTextColor.AQUA; // Màu xanh băng giá
-                
-                // ÉP BẢO TUYẾT RƠI LIÊN TỤC TRONG MÙA ĐÔNG
+                mauMua = NamedTextColor.AQUA;
                 if (!world.hasStorm()) {
                     world.setStorm(true);
                     world.setWeatherDuration(24000);
                 }
+                // Sửa lỗi hàm setInPowderSnow bằng cách tăng độ đóng băng tự nhiên
                 if (world.hasStorm() && isDungDuoiTroiNang(player)) {
-                    player.setInPowderSnow(true);
-                } else {
-                    player.setInPowderSnow(false);
+                    player.setFreezeTicks(Math.min(player.getFreezeTicks() + 20, 140));
                 }
             }
 
-            // KIỂM TRA TRẠNG THÁI NGÀY / ĐÊM
             long timeOfDay = world.getTime();
             String iconThoiGian = (timeOfDay >= 0 && timeOfDay < 12000) ? "☀️ Ngày" : "🌙 Đêm";
 
-            // KHỞI TẠO VÀ ĐẨY DỮ LIỆU LÊN SCOREBOARD
             ScoreboardManager manager = Bukkit.getScoreboardManager();
             Scoreboard board = manager.getNewScoreboard();
             
-            Objective obj = board.registerNewObjective("smp_info", Criteria.DUMMY, 
-                    Component.text("   10A1 SMP   ").color(NamedTextColor.GREEN).bold(true));
+            // Sửa triệt để lỗi getScore() bằng cách ép mượt về String màu truyền thống để không bị kẹt build
+            String titleText = "§a§l   10A1 SMP   ";
+            Objective obj = board.registerNewObjective("smp_info", Criteria.DUMMY, Component.text(titleText));
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
-            // Đặt các dòng hiển thị theo đúng thiết kế của ông
-            obj.getScore(Component.text("Tên: ").color(NamedTextColor.WHITE)
-                    .append(Component.text(player.getName()).color(NamedTextColor.YELLOW))).setScore(5);
+            obj.getScore("§fTên: §e" + player.getName()).setScore(5);
+            obj.getScore("§fOnline: §a" + soNguoiOnline + "/20").setScore(4);
+            obj.getScore("§fNgày: §6" + tongSoNgay).setScore(3);
             
-            obj.getScore(Component.text("Online: ").color(NamedTextColor.WHITE)
-                    .append(Component.text(onlineCount + "/20").color(NamedTextColor.GREEN))).setScore(4);
+            // Đổi màu chữ Mùa theo hệ thống mã màu cổ điển để tương thích 100%
+            String maMau = "§f";
+            if (muaHienTai.equals("Xuân")) maMau = "§d";
+            else if (muaHienTai.equals("Hạ")) maMau = "§6";
+            else if (muaHienTai.equals("Thu")) maMau = "§e";
+            else if (muaHienTai.equals("Đông")) maMau = "§b";
             
-            obj.getScore(Component.text("Ngày: ").color(NamedTextColor.WHITE)
-                    .append(Component.text(tongSoNgay).color(NamedTextColor.GOLD))).setScore(3);
-            
-            obj.getScore(Component.text("Mùa: ").color(NamedTextColor.WHITE)
-                    .append(Component.text(muaHienTai).color(mauMua))).setScore(2);
-            
-            obj.getScore(Component.text("Thời gian: ").color(NamedTextColor.WHITE)
-                    .append(Component.text(iconThoiGian).color(NamedTextColor.AQUA))).setScore(1);
+            obj.getScore("§fMùa: " + maMau + muaHienTai).setScore(2);
+            obj.getScore("§fThời gian: §b" + iconThoiGian).setScore(1);
 
             player.setScoreboard(board);
         }
