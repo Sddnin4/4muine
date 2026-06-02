@@ -1,12 +1,14 @@
 package me.tuicode.thoitietbonmua;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.data.Ageable;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -17,10 +19,10 @@ public final class ThoiTietBonMua extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        getLogger().info("Plugin Thoi Tiet 4 Mua + Scoreboard Fix 1.21 dang hoat dong!");
+        getLogger().info("Plugin Thoi Tiet 4 Mua + Scoreboard da gop code hoan hao!");
         
-        // Đăng ký trực tiếp Listener ngay trong nội bộ để tránh lỗi ép package trên GitHub
-        getServer().getPluginManager().registerEvents(new TrongTrotListener(), this);
+        // Đăng ký bộ lắng nghe sự kiện trồng trọt nội bộ
+        getServer().getPluginManager().registerEvents(new TrongTrotListenerNoiBo(), this);
         
         new BukkitRunnable() {
             @Override
@@ -32,7 +34,6 @@ public final class ThoiTietBonMua extends JavaPlugin {
 
     private void chayHeThongCore() {
         int soNguoiOnline = Bukkit.getOnlinePlayers().size();
-        LegacyComponentSerializer serializer = LegacyComponentSerializer.legacySection();
         
         for (Player player : Bukkit.getOnlinePlayers()) {
             World world = player.getWorld();
@@ -43,11 +44,9 @@ public final class ThoiTietBonMua extends JavaPlugin {
             long ngayTrongMua = (ngayTrongNam % 90) + 1;
 
             String muaHienTai = "";
-            NamedTextColor mauMua = NamedTextColor.WHITE;
 
             if (ngayTrongNam < 90) {
                 muaHienTai = "Xuân";
-                mauMua = NamedTextColor.LIGHT_PURPLE;
                 if (ngayTrongMua == 1 && !world.hasStorm()) {
                     world.setStorm(true);
                     world.setWeatherDuration(12000); 
@@ -56,7 +55,6 @@ public final class ThoiTietBonMua extends JavaPlugin {
                 
             } else if (ngayTrongNam < 180) {
                 muaHienTai = "Hạ";
-                mauMua = NamedTextColor.GOLD;
                 if (world.hasStorm()) {
                     world.setStorm(false);
                     world.setThundering(false);
@@ -67,17 +65,14 @@ public final class ThoiTietBonMua extends JavaPlugin {
                 
             } else if (ngayTrongNam < 270) {
                 muaHienTai = "Thu";
-                mauMua = NamedTextColor.YELLOW;
                 player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 40, 0, false, false, false));
                 
             } else {
                 muaHienTai = "Đông";
-                mauMua = NamedTextColor.AQUA;
                 if (!world.hasStorm()) {
                     world.setStorm(true);
                     world.setWeatherDuration(24000);
                 }
-                // Sửa lỗi hàm setInPowderSnow bằng cách tăng độ đóng băng tự nhiên
                 if (world.hasStorm() && isDungDuoiTroiNang(player)) {
                     player.setFreezeTicks(Math.min(player.getFreezeTicks() + 20, 140));
                 }
@@ -89,7 +84,6 @@ public final class ThoiTietBonMua extends JavaPlugin {
             ScoreboardManager manager = Bukkit.getScoreboardManager();
             Scoreboard board = manager.getNewScoreboard();
             
-            // Sửa triệt để lỗi getScore() bằng cách ép mượt về String màu truyền thống để không bị kẹt build
             String titleText = "§a§l   10A1 SMP   ";
             Objective obj = board.registerNewObjective("smp_info", Criteria.DUMMY, Component.text(titleText));
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
@@ -98,7 +92,6 @@ public final class ThoiTietBonMua extends JavaPlugin {
             obj.getScore("§fOnline: §a" + soNguoiOnline + "/20").setScore(4);
             obj.getScore("§fNgày: §6" + tongSoNgay).setScore(3);
             
-            // Đổi màu chữ Mùa theo hệ thống mã màu cổ điển để tương thích 100%
             String maMau = "§f";
             if (muaHienTai.equals("Xuân")) maMau = "§d";
             else if (muaHienTai.equals("Hạ")) maMau = "§6";
@@ -116,5 +109,26 @@ public final class ThoiTietBonMua extends JavaPlugin {
         Location loc = player.getLocation();
         int highestBlockY = player.getWorld().getHighestBlockYAt(loc);
         return loc.getBlockY() >= highestBlockY;
+    }
+
+    // LỚP LẮNG NGHE ĐƯỢC GỘP NỘI BỘ VÀO ĐÂY ĐỂ TRANH LỖI TÌM FILE TRÊN GITHUB
+    private static class TrongTrotListenerNoiBo implements Listener {
+        @EventHandler
+        public void onCayPhatTrien(BlockGrowEvent event) {
+            World world = event.getBlock().getWorld();
+            long tongSoNgay = world.getFullTime() / 24000;
+            long ngayTrongNam = tongSoNgay % 360;
+
+            if (ngayTrongNam < 90) {
+                if (event.getNewState().getBlockData() instanceof Ageable ageable) {
+                    int maxAge = ageable.getMaximumAge();
+                    int currentAge = ageable.getAge();
+                    if (currentAge < maxAge) {
+                        ageable.setAge(Math.min(maxAge, currentAge + 1));
+                        event.getNewState().setBlockData(ageable);
+                    }
+                }
+            }
+        }
     }
 }
