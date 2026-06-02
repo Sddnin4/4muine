@@ -1,0 +1,31 @@
+name: Build Plugin 10A1 SMP
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Lay code tu Repository
+      uses: actions/checkout@v4
+
+    - name: Cai dat moi truong Java 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Chay lenh dong goi Maven (Build JAR)
+      run: mvn -B package --file pom.xml
+
+    - name: Luu file .JAR de tai ve
+      uses: actions/upload-artifact@v4
+      with:
+        name: ThoiTietBonMua-Plugin
+        path: target/*.jar
