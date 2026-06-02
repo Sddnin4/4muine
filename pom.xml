@@ -17,8 +17,7 @@
     <dependency>
         <groupId>io.papermc.paper</groupId>
         <artifactId>paper-api</artifactId>
-        <version>1.21-R0.1-SNAPSHOT</version>
-        <scope>provided</scope>
+        <version>1.21.1-R0.1-SNAPSHOT</version> <scope>provided</scope>
     </dependency>
   </dependencies>
 
@@ -29,7 +28,6 @@
             <artifactId>maven-compiler-plugin</artifactId>
             <version>3.11.0</version>
             <configuration>
-                <!-- Ép Java 25 biên dịch ra định dạng Java 21 tương thích với server -->
                 <release>21</release>
             </configuration>
         </plugin>
