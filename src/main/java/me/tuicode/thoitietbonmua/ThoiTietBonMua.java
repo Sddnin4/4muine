@@ -688,6 +688,10 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         if (time >= 13000 && time <= 23000) return false;
         if (player.isInWater()) return false;
 
+        // Đội mũ bất kỳ → được che nắng, không bị đói mùa hạ
+        ItemStack helmet = player.getInventory().getHelmet();
+        if (helmet != null && helmet.getType() != Material.AIR) return false;
+
         Location loc = player.getLocation();
         int highestY = loc.getWorld().getHighestBlockYAt(loc);
         return loc.getBlockY() >= highestY;
