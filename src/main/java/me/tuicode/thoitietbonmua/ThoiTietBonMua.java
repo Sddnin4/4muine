@@ -902,7 +902,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
                 Block duoi = block.getRelative(org.bukkit.block.BlockFace.DOWN);
                 if (duoi.getType() == Material.FARMLAND) {
                     // Farmland ướt (moisture > 0) → lớn x1.5
-                    if (duoi.getBlockData() instanceof org.bukkit.block.data.Farmland farmland) {
+                    if (duoi.getBlockData() instanceof org.bukkit.block.data.type.Farmland farmland) {
                         if (farmland.getMoisture() == 0) {
                             // Khô hạn: cây chết → DEAD_BUSH hoặc AIR
                             event.setCancelled(true);
