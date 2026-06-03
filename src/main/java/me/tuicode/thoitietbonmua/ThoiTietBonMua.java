@@ -42,7 +42,7 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
 
     @Override
     public void onEnable() {
-        getLogger().info("He thong 4 Mua 2.0 - CAP NHAT QUAI VAT DOT BIEN DON DANH!");
+        getLogger().info("He thong 4 Mua 2.0 - ON DINH MA NGUON & QUAI DOT BIEN DON DANH!");
         getServer().getPluginManager().registerEvents(this, this);
         
         if (getCommand("season") != null) {
@@ -87,7 +87,8 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
                 player.addPotionEffect(new PotionEffect(PotionEffectType.LUCK, 40, 0, false, false, false));
                 player.sendActionBar(Component.text("§a🌸 Mùa xuân ấm áp: Vạn vật sinh sôi, tỉ lệ xuất hiện động vật tăng cao!"));
                 
-                world.spawnParticle(Particle.CHERRY_LEAF, loc.add(random.nextDouble()*14 - 7, 5, random.nextDouble()*14 - 7), 1, 0, 0, 0, 0);
+                // ĐÃ SỬA LỖI ĐỂ FIX 1000006986.JPG: Thay thế hạt lỗi bằng hạt may mắn vanilla
+                world.spawnParticle(Particle.HAPPY_VILLAGER, loc.add(random.nextDouble()*14 - 7, 4, random.nextDouble()*14 - 7), 2, 0, 0, 0, 0);
                 world.spawnParticle(Particle.HAPPY_VILLAGER, player.getLocation().add(random.nextDouble()*6 - 3, 1, random.nextDouble()*6 - 3), 1, 0, 0, 0, 0);
 
             } else if (ngayTrongNam < 180) {
@@ -220,7 +221,7 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
     }
 
     // ==========================================
-    // CƠ CHẾ MỚI: QUÁI VẬT TẤN CÔNG GÂY HIỆU ỨNG THEO MÙA
+    // CƠ CHẾ ĐỘT BIẾN: QUÁI VẬT TẤN CÔNG THEO MÙA ☀️❄️
     // ==========================================
     @EventHandler
     public void onQuaiTanCongNguoiChoi(EntityDamageByEntityEvent event) {
@@ -229,7 +230,6 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
         LivingEntity attacker = null;
         Entity damager = event.getDamager();
 
-        // Kiểm tra xem là quái đánh trực tiếp hay bắn tên/projectile trúng
         if (damager instanceof LivingEntity) {
             attacker = (LivingEntity) damager;
         } else if (damager instanceof Projectile projectile) {
@@ -238,21 +238,20 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
             }
         }
 
-        // Lọc điều kiện: Phải là quái vật tấn công (bỏ qua nếu là người chơi khác hoặc mob thân thiện)
         if (attacker == null || attacker instanceof Player) return;
         if (attacker instanceof org.bukkit.entity.Monster || attacker instanceof org.bukkit.entity.Slime || attacker instanceof org.bukkit.entity.Phantom) {
             
             long ngayTrongNam = getNgayTrongNam(player.getWorld());
 
-            // ☀️ ĐÒN ĐÁNH MÙA HẠ: Gây cháy người chơi 4 giây
+            // ☀️ QUÁI MÙA HẠ ĐÁNH GÂY CHÁY (4 giây)
             if (ngayTrongNam >= 90 && ngayTrongNam < 180) {
-                player.setFireTicks(80); // 80 ticks = 4 giây cháy
+                player.setFireTicks(80); 
                 player.sendMessage("§c🔥 Bạn bị quái vật thiêu cháy do ảnh hưởng của khí hậu mùa hạ oi bức!");
             }
-            // ❄️ ĐÒN ĐÁNH MÙA ĐÔNG: Gây Chậm Rãi II (5 giây) + Tích thêm đóng băng màn hình
+            // ❄️ QUÁI MÙA ĐÔNG ĐÁNH GÂY CHẬM II (5 giây) + GIẬT ĐÓNG BĂNG MÀN HÌNH
             else if (ngayTrongNam >= 270) {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 1)); // 100 ticks = 5 giây Slowness II
-                player.setFreezeTicks(Math.min(player.getFreezeTicks() + 60, 140)); // Ép tăng độ lạnh màn hình
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 100, 1)); 
+                player.setFreezeTicks(Math.min(player.getFreezeTicks() + 60, 140)); 
                 player.sendMessage("§b❄️ Đòn đánh băng giá của quái vật khiến bạn bị tê cứng và di chuyển chậm chạp!");
             }
         }
@@ -285,8 +284,8 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
 
     @EventHandler
     public void onCayPhatTrien(BlockGrowEvent event) {
-        long ngayTrongNam = getNgayTrongNam(event.getBlock().getWorld());
-        if (ngayTrongNam < 90) {
+        long holidays = getNgayTrongNam(event.getBlock().getWorld());
+        if (holidays < 90) {
             if (event.getNewState().getBlockData() instanceof org.bukkit.block.data.Ageable ageable) {
                 int maxAge = ageable.getMaximumAge();
                 int currentAge = ageable.getAge();
@@ -295,12 +294,12 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
                     event.getNewState().setBlockData(ageable);
                 }
             }
-        } else if (ngayTrongNam >= 90 && ngayTrongNam < 180) {
+        } else if (holidays >= 90 && holidays < 180) {
             Block blockDuoi = event.getBlock().getLocation().subtract(0, 1, 0).getBlock();
             if (blockDuoi.getType() == Material.FARMLAND && random.nextInt(100) < 35) {
                 blockDuoi.setType(Material.DIRT);
             }
-        } else if (ngayTrongNam >= 270) {
+        } else if (holidays >= 270) {
             if (random.nextInt(100) < 60) event.setCancelled(true);
         }
     }
@@ -327,6 +326,9 @@ public final class ThoiTietBonMua extends JavaPlugin implements Listener, Comman
         }
     }
 
+    // ==========================================
+    // BỘ LỆNH ADMIN /SEASON QUẢN LÝ TỐI TÂN
+    // ==========================================
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (command.getName().equalsIgnoreCase("season")) {
