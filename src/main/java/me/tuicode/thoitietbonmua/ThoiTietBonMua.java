@@ -8,6 +8,7 @@ import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.type.Farmland; // Đã thêm import chuẩn cho Farmland
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -93,7 +94,6 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
                     setMuaHa(mainWorld);
                 }
 
-                // Duyệt người chơi và cô lập biến world/mùa tránh lỗi logic đa thế giới
                 for (Player player : getServer().getOnlinePlayers()) {
                     World playerWorld = player.getWorld();
                     String playerMua = getMuaHienTai(playerWorld);
@@ -405,8 +405,8 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
 
                 Block block = world.getBlockAt(bx, by, bz);
                 if (block.getType() == Material.GRASS_BLOCK) {
-                    // ĐÃ SỬA LỖI: Gọi applyBoneMeal thông qua đối tượng World chính xác
-                    world.applyBoneMeal(block.getLocation(), org.bukkit.block.BlockFace.UP);
+                    // FIX LỖI DÒNG 409: Trả về block.applyBoneMeal chuẩn của Bukkit API
+                    block.applyBoneMeal(org.bukkit.block.BlockFace.UP);
                     Location blockLoc = block.getLocation().add(0.5, 1.2, 0.5);
                     world.spawnParticle(Particle.HAPPY_VILLAGER, blockLoc, 3, 0.3, 0.3, 0.3, 0);
                     break;
@@ -565,7 +565,6 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         }
     }
 
-    // ĐÃ SỬA LỖI: Gộp và tối ưu hóa toàn bộ logic quản lý cây trồng tránh xung đột Event
     @EventHandler
     public void onCayPhatTrien(BlockGrowEvent event) {
         World world = event.getBlock().getWorld();
@@ -573,14 +572,11 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         Block block = event.getBlock();
 
         switch (mua) {
-            case "xuan" -> {
-                if (random.nextBoolean()) return;
-                tangTuoiCay(event);
-            }
             case "ha" -> {
                 Block duoi = block.getRelative(org.bukkit.block.BlockFace.DOWN);
                 if (duoi.getType() == Material.FARMLAND) {
-                    if (duoi.getBlockData() instanceof org.bukkit.block.data.Farmland farmland) {
+                    // FIX LỖI DÒNG 583: Sử dụng lớp Farmland được import từ org.bukkit.block.data.type
+                    if (duoi.getBlockData() instanceof Farmland farmland) {
                         if (farmland.getMoisture() == 0) {
                             event.setCancelled(true);
                             block.setType(Material.AIR);
@@ -595,13 +591,17 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
                 if (random.nextInt(3) != 0) return;
                 tangTuoiCay(event);
             }
+            case "xuan" -> {
+                if (random.nextBoolean()) return;
+                tangTuoiCay(event);
+            }
             case "dong" -> {
                 event.setCancelled(true);
                 Material mat = block.getType();
                 if (mat == Material.WHEAT || mat == Material.CARROTS || mat == Material.POTATOES) {
                     int highestY = world.getHighestBlockYAt(block.getLocation());
-                    if (block.getY() >= highestY - 1) { // Không có mái che
-                        if (random.nextInt(20) == 0) { // 5% cơ hội chết héo
+                    if (block.getY() >= highestY - 1) {
+                        if (random.nextInt(20) == 0) {
                             block.setType(Material.AIR);
                             Block farmland = block.getRelative(org.bukkit.block.BlockFace.DOWN);
                             if (farmland.getType() == Material.FARMLAND) farmland.setType(Material.DIRT);
