@@ -6,10 +6,8 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace; // Đã thêm import BlockFace
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.type.Farmland; 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -32,21 +30,20 @@ import org.bukkit.potion.PotionType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
+import java.time.Duration;
 import java.util.Random;
 import java.util.Set;
-import java.time.Duration;
 
 public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecutor {
 
-    private static final int  NGAY_MOI_MUA      = 90;
-    private static final int  TONG_NGAY_CHU_KY  = 360;
-    private static final long TICKS_MOI_NGAY    = 24000L;
-    private static final int TICKS_MUA_AXIT     = 100;
+    private static final int NGAY_MOI_MUA = 90;
+    private static final int TONG_NGAY_CHU_KY = 360;
+    private static final long TICKS_MOI_NGAY = 24000L;
+    private static final int TICKS_MUA_AXIT = 100;
 
     private final Random random = new Random();
     private String overrideMua = null;
     private String muaTruoc = null;
-
     private int tickerMuaAxit = 0;
     private int tickerBoneMeal = 0;
     private int tickerSet = 0;
@@ -79,36 +76,39 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
                 tickerBoneMeal++;
                 tickerSet++;
 
-                World mainWorld = getServer().getWorlds().get(0);
-                String muaHienTaiChinh = getMuaHienTai(mainWorld);
+                if (getServer().getWorlds().isEmpty()) return;
+                World world = getServer().getWorlds().get(0);
+                String muaHienTai = getMuaHienTai(world);
 
-                kiemTraChuyenMua(mainWorld, muaHienTaiChinh);
-                apDungThoiTietMua(mainWorld, muaHienTaiChinh);
+                kiemTraChuyenMua(world, muaHienTai);
+                apDungThoiTietMua(world, muaHienTai);
 
-                if (muaHienTaiChinh.equals("xuan") && tickerBoneMeal >= 60) {
+                if (muaHienTai.equals("xuan") && tickerBoneMeal >= 60) {
                     tickerBoneMeal = 0;
-                    boneMealMuaXuan(mainWorld);
+                    boneMealMuaXuan(world);
                 }
 
-                if (muaHienTaiChinh.equals("ha") && tickerSet >= 200) {
+                if (muaHienTai.equals("ha") && tickerSet >= 200) {
                     tickerSet = 0;
-                    setMuaHa(mainWorld);
+                    setMuaHa(world);
                 }
 
                 for (Player player : getServer().getOnlinePlayers()) {
-                    World playerWorld = player.getWorld();
-                    String playerMua = getMuaHienTai(playerWorld);
-
-                    apDungHieuUngNguoiChoi(player, playerWorld, playerMua);
-                    kiemTraGiaiNhietNuoc(player, playerWorld, playerMua);
-
-                    if (playerMua.equals("thu") && tickerMuaAxit >= TICKS_MUA_AXIT) {
-                        apDungMuaAxit(player, playerWorld);
+                    if (!player.getWorld().equals(world)) {
+                        world = player.getWorld();
+                        muaHienTai = getMuaHienTai(world);
                     }
 
-                    apDungMiningFatigueDong(player, playerMua);
-                    apDungDoiMuaHa(player, playerWorld, playerMua);
-                    capNhatScoreboard(player, playerWorld, playerMua);
+                    apDungHieuUngNguoiChoi(player, world, muaHienTai);
+                    kiemTraGiaiNhietNuoc(player, world, muaHienTai);
+
+                    if (muaHienTai.equals("thu") && tickerMuaAxit >= TICKS_MUA_AXIT) {
+                        apDungMuaAxit(player, world);
+                    }
+
+                    apDungMiningFatigueDong(player, muaHienTai);
+                    apDungDoiMuaHa(player, world, muaHienTai);
+                    capNhatScoreboard(player, world, muaHienTai);
                 }
 
                 if (tickerMuaAxit >= TICKS_MUA_AXIT) tickerMuaAxit = 0;
@@ -119,9 +119,9 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     private String getMuaHienTai(World world) {
         if (overrideMua != null) return overrideMua;
         long ngayTrongNam = getNgayTrongNam(world);
-        if (ngayTrongNam < NGAY_MOI_MUA)      return "xuan";
-        if (ngayTrongNam < NGAY_MOI_MUA * 2)  return "ha";
-        if (ngayTrongNam < NGAY_MOI_MUA * 3)  return "thu";
+        if (ngayTrongNam < NGAY_MOI_MUA) return "xuan";
+        if (ngayTrongNam < NGAY_MOI_MUA * 2) return "ha";
+        if (ngayTrongNam < NGAY_MOI_MUA * 3) return "thu";
         return "dong";
     }
 
@@ -158,37 +158,42 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
 
         switch (muaHienTai) {
             case "xuan" -> {
-                tenMuaMoi  = "🌸  MÙA XUÂN  🌸";
-                mauTitle   = NamedTextColor.GREEN;
-                amThanh    = Sound.ENTITY_PLAYER_LEVELUP;
+                tenMuaMoi = "🌸  MÙA XUÂN  🌸";
+                mauTitle = NamedTextColor.GREEN;
+                amThanh = Sound.ENTITY_PLAYER_LEVELUP;
             }
             case "ha" -> {
-                tenMuaMoi  = "☀  MÙA HẠ  ☀";
-                mauTitle   = NamedTextColor.GOLD;
-                amThanh    = Sound.AMBIENT_BASALT_DELTAS_MOOD;
+                tenMuaMoi = "☀  MÙA HẠ  ☀";
+                mauTitle = NamedTextColor.GOLD;
+                amThanh = Sound.AMBIENT_BASALT_DELTAS_MOOD;
             }
             case "thu" -> {
-                tenMuaMoi  = "🍂  MÙA THU  🍂";
-                mauTitle   = NamedTextColor.RED;
-                amThanh    = Sound.AMBIENT_CAVE;
+                tenMuaMoi = "🍂  MÙA THU  🍂";
+                mauTitle = NamedTextColor.RED;
+                amThanh = Sound.AMBIENT_CAVE;
             }
             default -> {
-                tenMuaMoi  = "❄  MÙA ĐÔNG  ❄";
-                mauTitle   = NamedTextColor.AQUA;
-                amThanh    = Sound.AMBIENT_UNDERWATER_LOOP;
+                tenMuaMoi = "❄  MÙA ĐÔNG  ❄";
+                mauTitle = NamedTextColor.AQUA;
+                amThanh = Sound.AMBIENT_UNDERWATER_LOOP;
             }
         }
 
-        Component titleComp    = Component.text(tenMuaMoi).color(mauTitle).decorate(TextDecoration.BOLD);
-        Component subtitleComp = Component.text("Vạn vật đã thay đổi theo dòng chảy thời gian...").color(NamedTextColor.WHITE);
+        Component titleComp = Component.text(tenMuaMoi)
+                .color(mauTitle).decorate(TextDecoration.BOLD);
+        Component subtitleComp = Component.text("Vạn vật đã thay đổi theo dòng chảy thời gian...")
+                .color(NamedTextColor.WHITE);
 
-        Title.Times times = Title.Times.times(Duration.ofMillis(500), Duration.ofMillis(3000), Duration.ofMillis(1000));
+        Title.Times times = Title.Times.times(
+                Duration.ofMillis(500),
+                Duration.ofMillis(3000),
+                Duration.ofMillis(1000)
+        );
         Title title = Title.title(titleComp, subtitleComp, times);
 
-        Sound finalAmThanh = amThanh;
         for (Player p : getServer().getOnlinePlayers()) {
             p.showTitle(title);
-            p.playSound(p.getLocation(), finalAmThanh, 1.0f, 1.0f);
+            p.playSound(p.getLocation(), amThanh, 1.0f, 1.0f);
         }
 
         getServer().broadcast(Component.text("═══════════════════════════════════════").color(NamedTextColor.DARK_GRAY));
@@ -199,7 +204,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     private void apDungThoiTietMua(World world, String mua) {
         switch (mua) {
             case "xuan", "ha" -> {
-                if (world.hasStorm())     world.setStorm(false);
+                if (world.hasStorm()) world.setStorm(false);
                 if (world.isThundering()) world.setThundering(false);
             }
             case "thu" -> {
@@ -226,8 +231,8 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         Location loc = player.getLocation();
         switch (mua) {
             case "xuan" -> hieuUngXuan(player, loc);
-            case "ha"   -> hieuUngHa(player, loc, world);
-            case "thu"  -> hieuUngThu(player, loc);
+            case "ha" -> hieuUngHa(player, loc, world);
+            case "thu" -> hieuUngThu(player, loc);
             case "dong" -> hieuUngDong(player, loc, world);
         }
     }
@@ -269,10 +274,9 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     }
 
     private void hieuUngThu(Player player, Location loc) {
-        int rand3 = random.nextInt(3);
-        Color mauLa = switch (rand3) {
-            case 0  -> Color.fromRGB(210, 90, 10);
-            case 1  -> Color.fromRGB(180, 30, 10);
+        Color mauLa = switch (random.nextInt(3)) {
+            case 0 -> Color.fromRGB(210, 90, 10);
+            case 1 -> Color.fromRGB(180, 30, 10);
             default -> Color.fromRGB(220, 160, 20);
         };
         Particle.DustOptions dust = new Particle.DustOptions(mauLa, 1.3f);
@@ -313,13 +317,13 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
             }
         }
 
-        boolean macDoDa       = checkMacDoDa(player);
+        boolean macDoDa = checkMacDoDa(player);
         boolean ganNguonNhiet = checkGanNguonNhiet(player);
 
         if (macDoDa || ganNguonNhiet) {
             player.setFreezeTicks(0);
             String lyDo = macDoDa ? "Giáp da giữ ấm" : "Gần nguồn nhiệt";
-            player.sendActionBar(Component.text("❄ Mùa Đông | " + lyDo + " — An safe!").color(NamedTextColor.AQUA));
+            player.sendActionBar(Component.text("❄ Mùa Đông | " + lyDo + " — An toàn!").color(NamedTextColor.AQUA));
         } else {
             int freeze = Math.min(player.getFreezeTicks() + 5, 140);
             player.setFreezeTicks(freeze);
@@ -344,9 +348,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     }
 
     private void apDungMuaAxit(Player player, World world) {
-        if (!world.hasStorm()) return;
-        if (player.isInWater()) return;
-
+        if (!world.hasStorm() || player.isInWater()) return;
         Location loc = player.getLocation();
         int highestY = world.getHighestBlockYAt(loc);
         if (loc.getBlockY() < highestY) return;
@@ -358,8 +360,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     }
 
     private void apDungDoiMuaHa(Player player, World world, String mua) {
-        if (!mua.equals("ha")) return;
-        if (!isDungDuoiTroiNang(player, world)) return;
+        if (!mua.equals("ha") || !isDungDuoiTroiNang(player, world)) return;
         player.setExhaustion(Math.min(player.getExhaustion() + 0.1f, 4.0f));
     }
 
@@ -367,8 +368,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         if (random.nextInt(20) != 0) return;
 
         for (Player player : getServer().getOnlinePlayers()) {
-            if (!player.getWorld().equals(world)) continue;
-            if (!isDungDuoiTroiNang(player, world)) continue;
+            if (!player.getWorld().equals(world) || !isDungDuoiTroiNang(player, world)) continue;
 
             double offsetX = (random.nextDouble() - 0.5) * 16.0;
             double offsetZ = (random.nextDouble() - 0.5) * 16.0;
@@ -378,11 +378,9 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
             world.strikeLightningEffect(setLoc);
             player.playSound(player.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 0.8f);
 
-            if (setLoc.distance(player.getLocation()) <= 5.0) {
-                if (player.getHealth() > 4.0) {
-                    player.damage(4.0);
-                    player.sendMessage(Component.text("[Mùa Hạ] ⚡ Sét suýt đánh trúng bạn! Mất 2 tim!").color(NamedTextColor.YELLOW));
-                }
+            if (setLoc.distance(player.getLocation()) <= 5.0 && player.getHealth() > 4.0) {
+                player.damage(4.0);
+                player.sendMessage(Component.text("[Mùa Hạ] ⚡ Sét suýt đánh trúng bạn! Mất 2 tim!").color(NamedTextColor.YELLOW));
             }
             break;
         }
@@ -391,25 +389,18 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     private void boneMealMuaXuan(World world) {
         for (Player player : getServer().getOnlinePlayers()) {
             if (!player.getWorld().equals(world)) continue;
-
             Location loc = player.getLocation();
             int attempts = 0;
-            int maxAttempts = 5;
-
-            while (attempts < maxAttempts) {
+            while (attempts < 5) {
                 attempts++;
-                int ox = random.nextInt(33) - 16;
-                int oz = random.nextInt(33) - 16;
-                int bx = loc.getBlockX() + ox;
-                int bz = loc.getBlockZ() + oz;
+                int bx = loc.getBlockX() + random.nextInt(33) - 16;
+                int bz = loc.getBlockZ() + random.nextInt(33) - 16;
                 int by = world.getHighestBlockYAt(bx, bz) - 1;
 
                 Block block = world.getBlockAt(bx, by, bz);
                 if (block.getType() == Material.GRASS_BLOCK) {
-                    // FIX CHUẨN DÒNG 409: Gọi từ world theo đúng Bukkit/Paper API
-                    world.applyBoneMeal(block.getLocation(), BlockFace.UP);
-                    Location blockLoc = block.getLocation().add(0.5, 1.2, 0.5);
-                    world.spawnParticle(Particle.HAPPY_VILLAGER, blockLoc, 3, 0.3, 0.3, 0.3, 0);
+                    block.applyBoneMeal(org.bukkit.block.BlockFace.UP);
+                    world.spawnParticle(Particle.HAPPY_VILLAGER, block.getLocation().add(0.5, 1.2, 0.5), 3, 0.3, 0.3, 0.3, 0);
                     break;
                 }
             }
@@ -421,15 +412,13 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         long time = world.getTime();
         if (time >= 13000 && time <= 23000) return false;
         if (player.isInWater()) return false;
-
         Location loc = player.getLocation();
-        int highestY = loc.getWorld().getHighestBlockYAt(loc);
-        return loc.getBlockY() >= highestY;
+        return loc.getBlockY() >= loc.getWorld().getHighestBlockYAt(loc);
     }
 
     private boolean checkMacDoDa(Player player) {
         PlayerInventory inv = player.getInventory();
-        ItemStack[] armorPieces = { inv.getHelmet(), inv.getChestplate(), inv.getLeggings(), inv.getBoots() };
+        ItemStack[] armorPieces = {inv.getHelmet(), inv.getChestplate(), inv.getLeggings(), inv.getBoots()};
         Set<Material> leatherMats = Set.of(Material.LEATHER_HELMET, Material.LEATHER_CHESTPLATE, Material.LEATHER_LEGGINGS, Material.LEATHER_BOOTS);
         for (ItemStack armor : armorPieces) {
             if (armor != null && leatherMats.contains(armor.getType())) return true;
@@ -439,12 +428,12 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
 
     private boolean checkGanNguonNhiet(Player player) {
         Location loc = player.getLocation();
-        int radius = 4;
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
-                    Material mat = loc.getWorld().getBlockAt(loc.getBlockX() + x, loc.getBlockY() + y, loc.getBlockZ() + z).getType();
-                    if (isNguonNhiet(mat)) return true;
+        for (int x = -4; x <= 4; x++) {
+            for (int y = -4; y <= 4; y++) {
+                for (int z = -4; z <= 4; z++) {
+                    if (isNguonNhiet(loc.getWorld().getBlockAt(loc.getBlockX() + x, loc.getBlockY() + y, loc.getBlockZ() + z).getType())) {
+                        return true;
+                    }
                 }
             }
         }
@@ -453,16 +442,13 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
 
     private boolean isNguonNhiet(Material mat) {
         return switch (mat) {
-            case CAMPFIRE, SOUL_CAMPFIRE, FIRE, SOUL_FIRE, TORCH, WALL_TORCH, SOUL_TORCH, SOUL_WALL_TORCH,
-                 LANTERN, SOUL_LANTERN, BLAST_FURNACE, FURNACE, SMOKER, MAGMA_BLOCK, LAVA -> true;
+            case CAMPFIRE, SOUL_CAMPFIRE, FIRE, SOUL_FIRE, TORCH, WALL_TORCH, SOUL_TORCH, SOUL_WALL_TORCH, LANTERN, SOUL_LANTERN, BLAST_FURNACE, FURNACE, SMOKER, MAGMA_BLOCK, LAVA -> true;
             default -> false;
         };
     }
 
     private void kiemTraGiaiNhietNuoc(Player player, World world, String mua) {
-        if (!mua.equals("ha")) return;
-        if (!player.isInWater()) return;
-        if (player.hasPotionEffect(PotionEffectType.HUNGER)) {
+        if (mua.equals("ha") && player.isInWater() && player.hasPotionEffect(PotionEffectType.HUNGER)) {
             player.removePotionEffect(PotionEffectType.HUNGER);
             player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 1, true, true));
             player.sendActionBar(Component.text("💧 Mát lạnh! Giải nhiệt bằng nước! +Tốc Độ II (10s)").color(NamedTextColor.AQUA));
@@ -472,28 +458,25 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     @EventHandler
     public void onDrinkWater(PlayerItemConsumeEvent event) {
         Player player = event.getPlayer();
-        String mua = getMuaHienTai(player.getWorld());
-        if (!mua.equals("ha")) return;
+        if (!getMuaHienTai(player.getWorld()).equals("ha")) return;
 
         ItemStack item = event.getItem();
         if (item.getType() != Material.POTION) return;
-        if (!(item.getItemMeta() instanceof PotionMeta meta)) return;
-        if (meta.getBasePotionType() != PotionType.WATER) return;
+        if (!(item.getItemMeta() instanceof PotionMeta meta) || meta.getBasePotionType() != PotionType.WATER) return;
 
         player.removePotionEffect(PotionEffectType.HUNGER);
         player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200, 1, true, true));
-        player.sendMessage(Component.text("[Mùa Hạ] ").color(NamedTextColor.GOLD).append(Component.text("Mát lạnh! Giải nhiệt thành công! +Tốc Độ II (10s)").color(NamedTextColor.YELLOW)));
+        player.sendMessage(Component.text("[Mùa Hạ] ").color(NamedTextColor.GOLD)
+                .append(Component.text("Mát lạnh! Giải nhiệt thành công! +Tốc Độ II (10s)").color(NamedTextColor.YELLOW)));
     }
 
     @EventHandler
     public void onQuaiTanCongNguoiChoi(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
-
         LivingEntity attacker = getAttacker(event.getDamager());
         if (attacker == null || !isQuaiCanXuLy(attacker)) return;
 
-        String mua = getMuaHienTai(player.getWorld());
-        switch (mua) {
+        switch (getMuaHienTai(player.getWorld())) {
             case "ha" -> {
                 player.setFireTicks(80);
                 player.sendActionBar(Component.text("🔥 Mùa Hạ | Đòn lửa từ quái! Cháy 4 giây!").color(NamedTextColor.RED));
@@ -519,27 +502,20 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     @EventHandler
     public void onEntitySpawn(CreatureSpawnEvent event) {
         World world = event.getEntity().getWorld();
-        String mua  = getMuaHienTai(world);
-        EntityType type = event.getEntityType();
         Location loc = event.getLocation();
-
-        switch (mua) {
+        
+        switch (getMuaHienTai(world)) {
             case "xuan" -> {
-                if (type == EntityType.BEE && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL) {
+                if (event.getEntityType() == EntityType.BEE && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL) {
                     for (int i = 0; i < 2; i++) {
-                        double ox = (random.nextDouble() - 0.5) * 3.0;
-                        double oz = (random.nextDouble() - 0.5) * 3.0;
-                        world.spawnEntity(loc.clone().add(ox, 0, oz), EntityType.BEE);
+                        world.spawnEntity(loc.clone().add((random.nextDouble() - 0.5) * 3.0, 0, (random.nextDouble() - 0.5) * 3.0), EntityType.BEE);
                     }
                 }
             }
             case "ha" -> {
                 long time = world.getTime();
-                boolean laBanDem = time >= 13000 && time <= 23000;
-                if (laBanDem && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL) {
-                    int highestY = world.getHighestBlockYAt(loc);
-                    boolean ngoaiTroi = loc.getBlockY() >= highestY - 1;
-                    if (ngoaiTroi && random.nextInt(50) == 0) {
+                if (time >= 13000 && time <= 23000 && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL) {
+                    if (loc.getBlockY() >= world.getHighestBlockYAt(loc) - 1 && random.nextInt(50) == 0) {
                         event.setCancelled(true);
                         world.spawnEntity(loc, EntityType.MAGMA_CUBE);
                     }
@@ -554,10 +530,8 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
                 }
             }
             case "dong" -> {
-                if (type == EntityType.SKELETON && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL) {
-                    int highestY = world.getHighestBlockYAt(loc);
-                    boolean ngoaiTroi = loc.getBlockY() >= highestY - 1;
-                    if (ngoaiTroi) {
+                if (event.getEntityType() == EntityType.SKELETON && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL) {
+                    if (loc.getBlockY() >= world.getHighestBlockYAt(loc) - 1) {
                         event.setCancelled(true);
                         world.spawnEntity(loc, EntityType.STRAY);
                     }
@@ -568,148 +542,119 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
 
     @EventHandler
     public void onCayPhatTrien(BlockGrowEvent event) {
-        World world = event.getBlock().getWorld();
-        String mua  = getMuaHienTai(world);
         Block block = event.getBlock();
-
-        switch (mua) {
+        switch (getMuaHienTai(block.getWorld())) {
+            case "xuan" -> {
+                if (!random.nextBoolean()) tangTuoiCay(event);
+            }
             case "ha" -> {
                 Block duoi = block.getRelative(org.bukkit.block.BlockFace.DOWN);
-                if (duoi.getType() == Material.FARMLAND) {
-                    if (duoi.getBlockData() instanceof Farmland farmland) {
-                        if (farmland.getMoisture() == 0) {
-                            event.setCancelled(true);
-                            block.setType(Material.AIR);
-                            duoi.setType(Material.DIRT);
-                            for (Player p : block.getWorld().getNearbyPlayers(block.getLocation(), 16)) {
-                                p.sendActionBar(Component.text("🌵 Mùa Hạ | Cây trồng chết vì hạn hán! Tưới nước đi!").color(NamedTextColor.GOLD));
-                            }
-                            return;
+                if (duoi.getType() == Material.FARMLAND && duoi.getBlockData() instanceof org.bukkit.block.data.Farmland farmland) {
+                    if (farmland.getMoisture() == 0) {
+                        event.setCancelled(true);
+                        block.setType(Material.AIR);
+                        duoi.setType(Material.DIRT);
+                        for (Player p : block.getWorld().getNearbyPlayers(block.getLocation(), 16)) {
+                            p.sendActionBar(Component.text("🌵 Mùa Hạ | Cây trồng chết vì hạn hán! Tưới nước đi!").color(NamedTextColor.GOLD));
                         }
+                        return;
                     }
                 }
-                if (random.nextInt(3) != 0) return;
-                tangTuoiCay(event);
+                if (random.nextInt(3) == 0) tangTuoiCay(event);
             }
-            case "xuan" -> {
-                if (random.nextBoolean()) return;
-                tangTuoiCay(event);
-            }
-            case "dong" -> {
-                event.setCancelled(true);
-                Material mat = block.getType();
-                if (mat == Material.WHEAT || mat == Material.CARROTS || mat == Material.POTATOES) {
-                    int highestY = world.getHighestBlockYAt(block.getLocation());
-                    if (block.getY() >= highestY - 1) {
-                        if (random.nextInt(20) == 0) {
-                            block.setType(Material.AIR);
-                            Block farmland = block.getRelative(org.bukkit.block.BlockFace.DOWN);
-                            if (farmland.getType() == Material.FARMLAND) farmland.setType(Material.DIRT);
-                        }
-                    }
-                }
-            }
+            case "dong" -> event.setCancelled(true);
         }
     }
 
     private void tangTuoiCay(BlockGrowEvent event) {
-        BlockData newData = event.getNewState().getBlockData();
-        if (!(newData instanceof Ageable ageable)) return;
-        int maxAge     = ageable.getMaximumAge();
-        int currentAge = ageable.getAge();
-        if (currentAge < maxAge) {
-            ageable.setAge(Math.min(currentAge + 1, maxAge));
-            event.getNewState().setBlockData(ageable);
+        if (event.getNewState().getBlockData() instanceof Ageable ageable) {
+            int maxAge = ageable.getMaximumAge();
+            if (ageable.getAge() < maxAge) {
+                ageable.setAge(Math.min(ageable.getAge() + 1, maxAge));
+                event.getNewState().setBlockData(ageable);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onCayCoTheThoiMuaDong(BlockGrowEvent event) {
+        Block block = event.getBlock();
+        World world = block.getWorld();
+        if (!getMuaHienTai(world).equals("dong")) return;
+
+        Material mat = block.getType();
+        if (mat != Material.WHEAT && mat != Material.CARROTS && mat != Material.POTATOES) return;
+        if (block.getY() < world.getHighestBlockYAt(block.getLocation()) - 1) return;
+
+        if (random.nextInt(20) == 0) {
+            event.setCancelled(true);
+            block.setType(Material.AIR);
+            Block farmland = block.getRelative(org.bukkit.block.BlockFace.DOWN);
+            if (farmland.getType() == Material.FARMLAND) farmland.setType(Material.DIRT);
         }
     }
 
     @EventHandler
     public void onAnimalGrow(EntityBreedEvent event) {
-        World world = event.getEntity().getWorld();
-        if (!getMuaHienTai(world).equals("xuan")) return;
-        if (random.nextBoolean()) return;
-
-        if (event.getEntity() instanceof Ageable parent) {
-            Location loc = ((Entity) parent).getLocation();
-            loc.getWorld().spawnEntity(loc, ((Entity) parent).getType());
+        if (getMuaHienTai(event.getEntity().getWorld()).equals("xuan") && random.nextBoolean()) {
+            if (event.getEntity() instanceof Ageable parent) {
+                Location loc = ((Entity) parent).getLocation();
+                loc.getWorld().spawnEntity(loc, ((Entity) parent).getType());
+            }
         }
     }
 
     @EventHandler
     public void onHarvestAutumn(BlockBreakEvent event) {
-        World world = event.getBlock().getWorld();
-        if (!getMuaHienTai(world).equals("thu")) return;
-
         Block block = event.getBlock();
-        if (!(block.getBlockData() instanceof Ageable ageable)) return;
-        if (ageable.getAge() < ageable.getMaximumAge()) return;
+        if (!getMuaHienTai(block.getWorld()).equals("thu")) return;
+
+        if (!(block.getBlockData() instanceof Ageable ageable) || ageable.getAge() < ageable.getMaximumAge()) return;
 
         Material dropMat = switch (block.getType()) {
-            case WHEAT    -> Material.WHEAT;
-            case CARROTS  -> Material.CARROT;
+            case WHEAT -> Material.WHEAT;
+            case CARROTS -> Material.CARROT;
             case POTATOES -> Material.POTATO;
             case BEETROOTS -> Material.BEETROOT;
             default -> null;
         };
-        if (dropMat == null) return;
-
-        block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(dropMat, 1));
+        
+        if (dropMat != null) {
+            block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(dropMat, 1));
+        }
     }
 
     private void capNhatScoreboard(Player player, World world, String muaHienTai) {
-        ScoreboardManager manager = getServer().getScoreboardManager();
-        Scoreboard board          = manager.getNewScoreboard();
-
-        Component title = Component.text("❖  10A1 SMP  ❖").color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD);
-        Objective obj = board.registerNewObjective("smp_info", Criteria.DUMMY, title);
+        Scoreboard board = getServer().getScoreboardManager().getNewScoreboard();
+        Objective obj = board.registerNewObjective("smp_info", Criteria.DUMMY, Component.text("❖  10A1 SMP  ❖").color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD));
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
-        int soOnline   = getServer().getOnlinePlayers().size();
-        long tongNgay  = getTongSoNgayMap(world);
-        long ngayConLai = getNgayConLai(world);
         long timeOfDay = world.getTime();
+        String iconThoiGian = timeOfDay < 1000 || timeOfDay > 23000 ? "🌅" : timeOfDay < 12000 ? "☀" : timeOfDay < 13000 ? "🌇" : "🌙";
+        String tenThoiGian = timeOfDay < 1000 || timeOfDay > 23000 ? "Bình Minh" : timeOfDay < 12000 ? "Ban Ngày" : timeOfDay < 13000 ? "Hoàng Hôn" : "Ban Đêm";
 
-        String iconThoiGian;
-        String tenThoiGian;
-        if (timeOfDay < 1000 || timeOfDay > 23000)    { iconThoiGian = "🌅"; tenThoiGian = "Bình Minh"; }
-        else if (timeOfDay < 12000)                    { iconThoiGian = "☀";  tenThoiGian = "Ban Ngày"; }
-        else if (timeOfDay < 13000)                    { iconThoiGian = "🌇"; tenThoiGian = "Hoàng Hôn"; }
-        else                                           { iconThoiGian = "🌙"; tenThoiGian = "Ban Đêm"; }
+        String tenMuaHienThi = switch (muaHienTai) {
+            case "xuan" -> "🌸 Xuân"; case "ha" -> "☀ Hạ"; case "thu" -> "🍂 Thu"; default -> "❄ Đông";
+        };
+        String maMauMua = switch (muaHienTai) {
+            case "xuan" -> "§a"; case "ha" -> "§e"; case "thu" -> "§6"; default -> "§b";
+        };
 
-        String tenMuaHienThi;
-        String maMauMua;
-        switch (muaHienTai) {
-            case "xuan" -> { tenMuaHienThi = "🌸 Xuân"; maMauMua = "§a"; }
-            case "ha"   -> { tenMuaHienThi = "☀ Hạ";   maMauMua = "§e"; }
-            case "thu"  -> { tenMuaHienThi = "🍂 Thu";  maMauMua = "§6"; }
-            default     -> { tenMuaHienThi = "❄ Đông"; maMauMua = "§b"; }
-        }
-
-        String trangThaiMua;
-        switch (muaHienTai) {
-            case "xuan" -> trangThaiMua = "§aPháp: Luck V";
-            case "ha"   -> trangThaiMua = isDungDuoiTroiNang(player, world) ? "§6☀ Nóng bức!" : "§eMát mẻ";
-            case "thu"  -> trangThaiMua = world.hasStorm() ? "§4☠ Mưa Axit!" : "§6Thu hoạch x2";
-            default     -> {
-                int freeze = player.getFreezeTicks();
-                trangThaiMua = freeze > 70 ? "§b❄ Đông Cứng: " + freeze + "/140" : "§7Nhiệt độ ổn";
-            }
-        }
-
-        String tagEp = (overrideMua != null) ? " §c[Ép]" : "";
+        String trangThaiMua = switch (muaHienTai) {
+            case "xuan" -> "§aPháp: Luck V";
+            case "ha" -> isDungDuoiTroiNang(player, world) ? "§6☀ Nóng bức!" : "§eMát mẻ";
+            case "thu" -> world.hasStorm() ? "§4☠ Mưa Axit!" : "§6Thu hoạch x2";
+            default -> player.getFreezeTicks() > 70 ? "§b❄ Đông Cứng: " + player.getFreezeTicks() + "/140" : "§7Nhiệt độ ổn";
+        };
 
         setDong(obj, "§7──────────────────", 15);
         setDong(obj, "§f👤 " + player.getName(), 14);
         setDong(obj, "§7──────────────────", 13);
-        setDong(obj, "§aOnline: §f" + soOnline + " người", 12);
-        setDong(obj, "§eNgày Map: §f" + tongNgay, 11);
+        setDong(obj, "§aOnline: §f" + getServer().getOnlinePlayers().size() + " người", 12);
+        setDong(obj, "§eNgày Map: §f" + getTongSoNgayMap(world), 11);
         setDong(obj, "§7──────────────────", 10);
-        setDong(obj, maMauMua + "Mùa: " + tenMuaHienThi + tagEp, 9);
-        if (overrideMua == null) {
-            setDong(obj, "§7Còn lại: §f" + ngayConLai + " ngày", 8);
-        } else {
-            setDong(obj, "§cChế độ ép mùa", 8);
-        }
+        setDong(obj, maMauMua + "Mùa: " + tenMuaHienThi + (overrideMua != null ? " §c[Ép]" : ""), 9);
+        setDong(obj, overrideMua == null ? "§7Còn lại: §f" + getNgayConLai(world) + " ngày" : "§cChế độ ép mùa", 8);
         setDong(obj, trangThaiMua, 7);
         setDong(obj, "§7──────────────────", 6);
         setDong(obj, "§7Thời Gian:", 5);
@@ -720,8 +665,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     }
 
     private void setDong(Objective obj, String text, int score) {
-        String uniqueText = text + "§r" + " ".repeat(score % 16);
-        obj.getScore(uniqueText).setScore(score);
+        obj.getScore(text + "§r" + " ".repeat(score % 16)).setScore(score);
     }
 
     @Override
@@ -730,85 +674,52 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         if (args.length == 0) { hienThiHelpSeason(sender); return true; }
 
         switch (args[0].toLowerCase()) {
-            case "info"  -> xuLyInfo(sender);
-            case "set"   -> xuLySet(sender, args);
+            case "info" -> xuLyInfo(sender);
+            case "set" -> xuLySet(sender, args);
             case "reset" -> xuLyReset(sender);
-            default      -> hienThiHelpSeason(sender);
+            default -> hienThiHelpSeason(sender);
         }
         return true;
     }
 
     private void xuLyInfo(CommandSender sender) {
         World world = getServer().getWorlds().get(0);
-        String mua  = getMuaHienTai(world);
-
-        String tenMua;
-        String maMau;
-        switch (mua) {
-            case "xuan" -> { tenMua = "Mùa Xuân 🌸"; maMau = "§a"; }
-            case "ha"   -> { tenMua = "Mùa Hạ ☀";   maMau = "§e"; }
-            case "thu"  -> { tenMua = "Mùa Thu 🍂";  maMau = "§6"; }
-            default     -> { tenMua = "Mùa Đông ❄"; maMau = "§b"; }
-        }
-
-        long tongNgay   = getTongSoNgayMap(world);
-        long ngayConLai = getNgayConLai(world);
-        String tagEp    = (overrideMua != null) ? " §c(Đang bị ép bởi Admin)" : "";
+        String mua = getMuaHienTai(world);
+        String tenMua = switch (mua) { case "xuan" -> "Mùa Xuân 🌸"; case "ha" -> "Mùa Hạ ☀"; case "thu" -> "Mùa Thu 🍂"; default -> "Mùa Đông ❄"; };
+        String maMau = switch (mua) { case "xuan" -> "§a"; case "ha" -> "§e"; case "thu" -> "§6"; default -> "§b"; };
 
         sender.sendMessage("§6=====[ §eTHỜI TIẾT 4 MÙA v2.1 §6]=====");
-        sender.sendMessage("§7Mùa Hiện Tại : " + maMau + tenMua + tagEp);
-        sender.sendMessage("§7Tổng Ngày Map : §f" + tongNgay + " ngày");
-        if (overrideMua == null) {
-            sender.sendMessage("§7Còn lại       : §f" + ngayConLai + " ngày");
-        } else {
-            sender.sendMessage("§cChế độ ép mùa đang hoạt động. Dùng /season reset để tắt.");
-        }
+        sender.sendMessage("§7Mùa Hiện Tại : " + maMau + tenMua + (overrideMua != null ? " §c(Đang bị ép bởi Admin)" : ""));
+        sender.sendMessage("§7Tổng Ngày Map : §f" + getTongSoNgayMap(world) + " ngày");
+        if (overrideMua == null) sender.sendMessage("§7Còn lại       : §f" + getNgayConLai(world) + " ngày");
+        else sender.sendMessage("§cChế độ ép mùa đang hoạt động. Dùng /season reset để tắt.");
         sender.sendMessage("§7Thời tiết     : " + (world.hasStorm() ? "§9Mưa/Tuyết" : "§eTrời trong"));
         sender.sendMessage("§6======================================");
     }
 
     private void xuLySet(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("thoitiet.admin")) {
-            sender.sendMessage("§cBạn không có quyền Admin!"); return;
-        }
-        if (args.length < 2) {
-            sender.sendMessage("§cThiếu tham số! Chọn: §exuan, ha, thu, dong"); return;
-        }
+        if (!sender.hasPermission("thoitiet.admin")) { sender.sendMessage("§cBạn không có quyền Admin!"); return; }
+        if (args.length < 2) { sender.sendMessage("§cThiếu tham số! Chọn: §exuan, ha, thu, dong"); return; }
 
         String nhapMua = args[1].toLowerCase();
-        if (!nhapMua.equals("xuan") && !nhapMua.equals("ha") && !nhapMua.equals("thu") && !nhapMua.equals("dong")) {
-            sender.sendMessage("§cMùa sai! Chọn: §exuan / ha / thu / dong"); return;
-        }
-
-        String tenMuaHienThi = switch (nhapMua) {
-            case "xuan" -> "Mùa Xuân 🌸";
-            case "ha"   -> "Mùa Hạ ☀";
-            case "thu"  -> "Mùa Thu 🍂";
-            default     -> "Mùa Đông ❄";
-        };
+        if (!nhapMua.matches("xuan|ha|thu|dong")) { sender.sendMessage("§cMùa sai! Chọn: §exuan / ha / thu / dong"); return; }
 
         overrideMua = nhapMua;
-        muaTruoc    = nhapMua;
-
+        muaTruoc = nhapMua;
+        String tenMuaHienThi = switch (nhapMua) { case "xuan" -> "Mùa Xuân 🌸"; case "ha" -> "Mùa Hạ ☀"; case "thu" -> "Mùa Thu 🍂"; default -> "Mùa Đông ❄"; };
+        
         getServer().broadcast(Component.text("[Admin] Server đã ép sang " + tenMuaHienThi + "! (Chế độ ép mùa)").color(NamedTextColor.YELLOW));
         sender.sendMessage("§a[Thành công] Đã ép server sang " + tenMuaHienThi + ".");
-        getLogger().info("[Admin] " + sender.getName() + " ép mùa → " + nhapMua);
     }
 
     private void xuLyReset(CommandSender sender) {
-        if (!sender.hasPermission("thoitiet.admin")) {
-            sender.sendMessage("§cBạn không có quyền Admin!"); return;
-        }
-        if (overrideMua == null) {
-            sender.sendMessage("§eServer đang chạy tự động, không cần reset."); return;
-        }
+        if (!sender.hasPermission("thoitiet.admin")) { sender.sendMessage("§cBạn không có quyền Admin!"); return; }
+        if (overrideMua == null) { sender.sendMessage("§eServer đang chạy tự động, không cần reset."); return; }
 
         overrideMua = null;
         muaTruoc = getMuaHienTai(getServer().getWorlds().get(0));
-
         getServer().broadcast(Component.text("[Admin] Hệ thống mùa quay về tự động theo ngày game!").color(NamedTextColor.GREEN));
         sender.sendMessage("§a[Thành công] Đã gỡ ép mùa. Server tự tính theo ngày.");
-        getLogger().info("[Admin] " + sender.getName() + " reset ép mùa.");
     }
 
     private void hienThiHelpSeason(CommandSender sender) {
