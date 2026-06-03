@@ -6,9 +6,10 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace; // Đã thêm import BlockFace
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.type.Farmland; // Đã thêm import chuẩn cho Farmland
+import org.bukkit.block.data.type.Farmland; 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -31,9 +32,9 @@ import org.bukkit.potion.PotionType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
-import java.time.Duration;
 import java.util.Random;
 import java.util.Set;
+import java.time.Duration;
 
 public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecutor {
 
@@ -318,7 +319,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
         if (macDoDa || ganNguonNhiet) {
             player.setFreezeTicks(0);
             String lyDo = macDoDa ? "Giáp da giữ ấm" : "Gần nguồn nhiệt";
-            player.sendActionBar(Component.text("❄ Mùa Đông | " + lyDo + " — An toàn!").color(NamedTextColor.AQUA));
+            player.sendActionBar(Component.text("❄ Mùa Đông | " + lyDo + " — An safe!").color(NamedTextColor.AQUA));
         } else {
             int freeze = Math.min(player.getFreezeTicks() + 5, 140);
             player.setFreezeTicks(freeze);
@@ -405,8 +406,8 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
 
                 Block block = world.getBlockAt(bx, by, bz);
                 if (block.getType() == Material.GRASS_BLOCK) {
-                    // FIX LỖI DÒNG 409: Trả về block.applyBoneMeal chuẩn của Bukkit API
-                    block.applyBoneMeal(org.bukkit.block.BlockFace.UP);
+                    // FIX CHUẨN DÒNG 409: Gọi từ world theo đúng Bukkit/Paper API
+                    world.applyBoneMeal(block.getLocation(), BlockFace.UP);
                     Location blockLoc = block.getLocation().add(0.5, 1.2, 0.5);
                     world.spawnParticle(Particle.HAPPY_VILLAGER, blockLoc, 3, 0.3, 0.3, 0.3, 0);
                     break;
@@ -575,7 +576,6 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
             case "ha" -> {
                 Block duoi = block.getRelative(org.bukkit.block.BlockFace.DOWN);
                 if (duoi.getType() == Material.FARMLAND) {
-                    // FIX LỖI DÒNG 583: Sử dụng lớp Farmland được import từ org.bukkit.block.data.type
                     if (duoi.getBlockData() instanceof Farmland farmland) {
                         if (farmland.getMoisture() == 0) {
                             event.setCancelled(true);
