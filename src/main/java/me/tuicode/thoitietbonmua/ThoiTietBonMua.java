@@ -5,7 +5,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
 import org.bukkit.*;
-import org.bukkit.TreeType;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Ageable;
 import org.bukkit.block.data.BlockData;
@@ -796,15 +795,8 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
                 }
 
                 if (surface.getType() == Material.GRASS_BLOCK) {
-                    // growNaturally: Paper API — tạo hoa/cỏ trên mặt block
-                    boolean grown = world.growTree(
-                        surface.getLocation().add(0, 1, 0),
-                        TreeType.JUNGLE_BUSH
-                    );
-                    // Fallback: dùng applyBoneMeal trực tiếp
-                    if (!grown) {
-                        surface.applyBoneMeal(org.bukkit.block.BlockFace.UP);
-                    }
+                    // applyBoneMeal lên mặt trên block cỏ → tạo hoa/cỏ ngẫu nhiên
+                    surface.applyBoneMeal(org.bukkit.block.BlockFace.UP);
                     // Particle xanh lá
                     world.spawnParticle(Particle.HAPPY_VILLAGER,
                         surface.getLocation().add(0.5, 1.3, 0.5),
