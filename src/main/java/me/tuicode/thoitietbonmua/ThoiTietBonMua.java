@@ -48,7 +48,7 @@ import java.util.HashSet;
 
 /**
  * ╔══════════════════════════════════════════════════════╗
- *   ThoiTietBonMua v2.2 — Paper/Purpur 1.21
+ *   ThoiTietBonMua v2.3 — Paper/Purpur 1.21
  *   Tác giả: Xnos  |  Nâng cấp: Claude
  * ╠══════════════════════════════════════════════════════╣
  *   Chu kỳ 360 ngày / 4 mùa / 90 ngày mỗi mùa
@@ -146,10 +146,14 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     @Override
     public void onEnable() {
         getLogger().info("╔══════════════════════════════════════╗");
-        getLogger().info("  ThoiTietBonMua v2.2 đã khởi động!");
+        getLogger().info("  ThoiTietBonMua v2.3 đã khởi động!");
         getLogger().info("╚══════════════════════════════════════╝");
 
         getServer().getPluginManager().registerEvents(this, this);
+
+        // Đăng ký các module v2.3
+        getServer().getPluginManager().registerEvents(new MobSeasonHandler(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerPerkHandler(this), this);
 
         if (getCommand("season") != null) {
             getCommand("season").setExecutor(this);
@@ -161,7 +165,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
 
     @Override
     public void onDisable() {
-        getLogger().info("ThoiTietBonMua v2.2 đã tắt.");
+        getLogger().info("ThoiTietBonMua v2.3 đã tắt.");
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -346,7 +350,7 @@ public class ThoiTietBonMua extends JavaPlugin implements Listener, CommandExecu
     //  TÍNH MÙA
     // ══════════════════════════════════════════════════════════════
 
-    private String getMuaHienTai(World world) {
+    public String getMuaHienTai(World world) {
         if (overrideMua != null) return overrideMua;
         long ngayTrongNam = getNgayTrongNam(world);
         if (ngayTrongNam < NGAY_MOI_MUA)      return "xuan";
